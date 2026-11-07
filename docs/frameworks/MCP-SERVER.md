@@ -6,7 +6,7 @@ lastUpdated: 2026-08-08
 
 # OmniRoute MCP Server Documentation
 
-> Model Context Protocol server with 110 tools across routing, cache, compression, memory, skills, proxy, pool, Radar, and context source operations.
+> Model Context Protocol server with 123 tools across routing, cache, compression, memory, skills, proxy, pool, Radar, and context source operations.
 >
 > Source of truth: `open-sse/mcp-server/server.ts` computes **110 unique tools** with `countUniqueMcpTools()`: 45 canonical definitions (including the six CCR lifecycle tools, the agent-skills trio, `omniroute_radar_catalog`, and `omniroute_x_search`), plus memory (3), skills (4), GitHub skills (3), pool (6), gamification (8), plugins (8), Notion (6), Obsidian (22), local corpus (3), and two RTK-only compression tools.
 
@@ -230,6 +230,31 @@ curl -X DELETE http://localhost:20128/api/settings/notion
 | `notion_get_database`        | `read:notion`  | Get database schema by ID                                      |
 | `notion_append_blocks`       | `write:notion` | Append children blocks to a parent block (max 100 per request) |
 
+## iOS Bridge — iPhone integrations (13)
+
+Defined in `open-sse/mcp-server/tools/iosBridgeTools.ts`. Rebuilds the native integrations of the
+Claude iOS app (Calendar, Reminders, Location & Maps, Apple Health, message/email drafts) for any
+MCP client. An Apple Shortcuts automation on the iPhone pushes snapshots to
+`POST /api/v1/ios-bridge/sync` and pulls queued write actions from `GET /api/v1/ios-bridge/actions`.
+Storage: `src/lib/db/iosBridge.ts` (`key_value`, namespace `ios_bridge`, encrypted at rest).
+Setup guide: [`IOS_BRIDGE.md`](IOS_BRIDGE.md).
+
+| Tool                        | Scopes              | Description                                                   |
+| :-------------------------- | :------------------ | :------------------------------------------------------------ |
+| `ios_bridge_status`         | `read:ios`          | Last sync per category + pending action count                 |
+| `ios_calendar_list_events`  | `read:ios`          | Apple Calendar events in a range (default next 7 days)        |
+| `ios_calendar_create_event` | `write:ios`         | Queue a new calendar event for the iPhone                     |
+| `ios_reminders_list`        | `read:ios`          | Apple Reminders items (open by default), sorted by due date   |
+| `ios_reminders_create`      | `write:ios`         | Queue a new reminder                                          |
+| `ios_reminders_update`      | `write:ios`         | Queue a change to a reminder (matched by title + list)        |
+| `ios_reminders_complete`    | `write:ios`         | Queue marking a reminder as completed                         |
+| `ios_reminders_delete`      | `write:ios`         | Queue deleting a reminder                                     |
+| `ios_actions_list`          | `read:ios`          | Queued actions and whether the iPhone executed them           |
+| `ios_location_get`          | `read:ios_location` | Last known iPhone location + Apple Maps link                  |
+| `ios_maps_link`             | `read:ios`          | Apple Maps link for a place, search or directions             |
+| `ios_health_summary`        | `read:ios_health`   | Apple Health metrics (read-only), totals/averages and per day |
+| `ios_compose_draft`         | `read:ios`          | `mailto:` / `sms:` link with a pre-filled email or text       |
+
 ## Agent Skill Catalog Tools (3)
 
 Defined in `open-sse/mcp-server/tools/agentSkillTools.ts`. Backed by `src/lib/agentSkills/catalog`. These tools expose the 45-entry Agent Skills documentation catalog to MCP clients and external agents. Scope: `read:catalog`.
@@ -331,6 +356,10 @@ MCP tools are authenticated through API key scopes. Scope enforcement is central
 | `read:obsidian`       | 13 read tools — `obsidian_list_vault`, `obsidian_read_note`, `obsidian_search_simple`, `obsidian_search_structured`, `obsidian_get_periodic_note`, `obsidian_sync_status`, … |
 | `write:obsidian`      | 9 write tools — `obsidian_write_note`, `obsidian_append_note`, `obsidian_patch_note`, `obsidian_move_note`, `obsidian_delete_note`, `obsidian_sync_trigger`, …               |
 | `read:local-corpus`   | `local_corpus_search`, `local_corpus_read`, `local_corpus_status`                                                                                                            |
+| `read:ios`            | `ios_bridge_status`, `ios_calendar_list_events`, `ios_reminders_list`, `ios_actions_list`, `ios_maps_link`, `ios_compose_draft`                                              |
+| `write:ios`           | `ios_calendar_create_event`, `ios_reminders_create`, `ios_reminders_update`, `ios_reminders_complete`, `ios_reminders_delete`                                                |
+| `read:ios_location`   | `ios_location_get`                                                                                                                                                           |
+| `read:ios_health`     | `ios_health_summary`                                                                                                                                                         |
 
 Wildcard scopes are supported: `read:*` grants all read-scopes, `*` grants full access.
 
@@ -397,7 +426,7 @@ MCP tool, prompt, and resource registries can compress descriptions at registrat
 
 Description compression shrinks each tool's metadata; **tool-cardinality reduction** goes one step further by reducing _how many_ tools are announced at all. Advertising fewer tools in the `tools/list` manifest cuts the per-request token cost the client's model pays for the tool catalog ("layer 5" compression). The implementation is a pure, stateless filter in `open-sse/mcp-server/toolCardinality.ts` (`reduceToolManifest`), wired into the registration loop in `createMcpServer()` (`open-sse/mcp-server/server.ts`).
 
-**Opt-in, off by default.** The filter only runs when at least one of two environment variables is set; with neither set, all 110 tools are announced unchanged.
+**Opt-in, off by default.** The filter only runs when at least one of two environment variables is set; with neither set, all 123 tools are announced unchanged.
 
 | Variable         | Mode                                                                                    |
 | :--------------- | :-------------------------------------------------------------------------------------- |
@@ -470,6 +499,7 @@ Use the dashboard or the `/api/mcp/audit` and `/api/mcp/audit/stats` REST endpoi
 | `open-sse/mcp-server/tools/memoryTools.ts`                               | Memory tool definitions (3 tools)                                |
 | `open-sse/mcp-server/tools/skillTools.ts`                                | Skill tool definitions (4 tools)                                 |
 | `open-sse/mcp-server/tools/notionTools.ts`                               | Notion context source tool definitions (6 tools)                 |
+| `open-sse/mcp-server/tools/iosBridgeTools.ts`                            | iOS Bridge tool definitions (13 tools)                           |
 | `open-sse/mcp-server/tools/gamificationTools.ts`                         | Gamification tool definitions (8 tools)                          |
 | `open-sse/mcp-server/tools/pluginTools.ts`                               | Plugin registration and management tools (8 tools)               |
 | `src/app/api/mcp/status/route.ts`                                        | `/api/mcp/status` endpoint                                       |

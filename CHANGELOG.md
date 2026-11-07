@@ -4,6 +4,11 @@
 
 ### ✨ New Features
 
+- **feat(mcp): iOS Bridge** — rebuilds the Claude iOS app's iPhone integrations (Calendar,
+  Reminders, Location & Apple Maps, read-only Apple Health, email/text drafts) as 13 `ios_*` MCP
+  tools (scopes `read:ios`, `write:ios`, `read:ios_location`, `read:ios_health`). An Apple
+  Shortcuts automation pushes encrypted snapshots to `POST /api/v1/ios-bridge/sync` and executes
+  queued write actions from `/api/v1/ios-bridge/actions`. See `docs/frameworks/IOS_BRIDGE.md`.
 - **feat(dashboard):** adaptive context-budget dial on the compression settings panel — mode (`off` / `floor` / `replace-autotrigger`) and policy (`reserve-output` / `percentage` / `absolute`) persist via `PUT /api/settings/compression` `contextBudget`. Completes the dashboard half of #7005 (API + DB already shipped in #7183).
 - **feat(sse): STRICT_ZERO_COST** — opt-in, off-by-default `freeAccessPolicy: "strict"` setting
   that hard-verifies every auto-combo candidate against live quota state and per-connection

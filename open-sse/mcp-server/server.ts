@@ -81,6 +81,7 @@ import { poolTools } from "./tools/poolTools.ts";
 import { gamificationTools } from "./tools/gamificationTools.ts";
 import { notionTools } from "./tools/notionTools.ts";
 import { obsidianTools } from "./tools/obsidianTools.ts";
+import { iosBridgeTools } from "./tools/iosBridgeTools.ts";
 import { localCorpusTools } from "./tools/localCorpusTools.ts";
 import { compressMcpRegistryMetadata } from "./descriptionCompressor.ts";
 import { reduceToolManifest, readMcpToolProfileFromEnv } from "./toolCardinality.ts";
@@ -119,6 +120,7 @@ const TOTAL_MCP_TOOL_COUNT = countUniqueMcpTools({
   pluginTools,
   notionTools,
   obsidianTools,
+  iosBridgeTools,
   localCorpusTools,
   compressionTools,
 });
@@ -815,6 +817,7 @@ export function createMcpServer(options?: CreateMcpServerOptions): McpServer {
     ...pluginTools.map((t) => t.name),
     ...gamificationTools.map((t) => t.name),
     ...obsidianTools.map((t) => t.name),
+    ...iosBridgeTools.map((t) => t.name),
     ...notionTools.map((t) => t.name),
     ...localCorpusTools.map((t) => t.name),
   ]);
@@ -1461,6 +1464,33 @@ export function createMcpServer(options?: CreateMcpServerOptions): McpServer {
             return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
           } catch (err) {
             const msg = toSafeMcpErrorMessage(err, "Obsidian tool execution failed");
+            return { content: [{ type: "text" as const, text: `Error: ${msg}` }], isError: true };
+          }
+        },
+        toolDef.scopes
+      )
+    );
+  });
+
+  // ── iOS Bridge Tools (Calendar / Reminders / Location / Health) ──
+  iosBridgeTools.forEach((toolDef) => {
+    server.registerTool(
+      toolDef.name,
+      {
+        description: toolDef.description,
+        // @ts-ignore: dynamic zod access
+        inputSchema: toolDef.inputSchema,
+      },
+      withScopeEnforcement(
+        toolDef.name,
+        async (args) => {
+          try {
+            const parsedArgs = toolDef.inputSchema.parse(args ?? {});
+            // @ts-ignore: handler expected specific object
+            const result = await toolDef.handler(parsedArgs);
+            return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+          } catch (err) {
+            const msg = toSafeMcpErrorMessage(err, "iOS bridge tool execution failed");
             return { content: [{ type: "text" as const, text: `Error: ${msg}` }], isError: true };
           }
         },

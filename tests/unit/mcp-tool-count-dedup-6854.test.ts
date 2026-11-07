@@ -21,6 +21,7 @@ const { gamificationTools } = await import("../../open-sse/mcp-server/tools/gami
 const { pluginTools } = await import("../../open-sse/mcp-server/tools/pluginTools.ts");
 const { notionTools } = await import("../../open-sse/mcp-server/tools/notionTools.ts");
 const { obsidianTools } = await import("../../open-sse/mcp-server/tools/obsidianTools.ts");
+const { iosBridgeTools } = await import("../../open-sse/mcp-server/tools/iosBridgeTools.ts");
 const { localCorpusTools } = await import("../../open-sse/mcp-server/tools/localCorpusTools.ts");
 const { compressionTools } = await import("../../open-sse/mcp-server/tools/compressionTools.ts");
 
@@ -55,12 +56,13 @@ test("#6854: countUniqueMcpTools de-duplicates tools registered in multiple coll
     pluginTools: pluginTools as unknown as NamedTool[],
     notionTools: notionTools as unknown as NamedTool[],
     obsidianTools: obsidianTools as unknown as NamedTool[],
+    iosBridgeTools: iosBridgeTools as unknown as NamedTool[],
     localCorpusTools: localCorpusTools as unknown as NamedTool[],
     compressionTools: compressionTools as unknown as Record<string, NamedTool>,
   };
 
   const total = countUniqueMcpTools(collections);
-  assert.equal(total, 110, "the published MCP inventory must match the registered tool set");
+  assert.equal(total, 123, "the published MCP inventory must match the registered tool set");
 
   // Independently compute the "true" unique count by unioning every collection's
   // tool names into a Set — this must equal countUniqueMcpTools's own result AND

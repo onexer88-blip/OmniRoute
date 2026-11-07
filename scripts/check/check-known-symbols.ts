@@ -290,6 +290,7 @@ export function findNewMcpTools(frozen: readonly string[], live: Set<string>): s
  *   - pluginTools (8): plugin_*
  *   - notionTools (6): notion_*
  *   - obsidianTools (22): obsidian_*
+ *   - iosBridgeTools (13): ios_*
  * agentSkillTools and compressionTools are included in MCP_TOOLS (deduped by RESERVED_MCP_NAMES).
  */
 export const KNOWN_MCP_TOOL_NAMES: readonly string[] = [
@@ -385,6 +386,20 @@ export const KNOWN_MCP_TOOL_NAMES: readonly string[] = [
   "obsidian_sync_trigger",
   "obsidian_sync_conflicts",
   "obsidian_sync_resolve_conflict",
+  // iosBridgeTools (13)
+  "ios_bridge_status",
+  "ios_calendar_list_events",
+  "ios_calendar_create_event",
+  "ios_reminders_list",
+  "ios_reminders_create",
+  "ios_reminders_update",
+  "ios_reminders_complete",
+  "ios_reminders_delete",
+  "ios_actions_list",
+  "ios_location_get",
+  "ios_maps_link",
+  "ios_health_summary",
+  "ios_compose_draft",
 ];
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -595,6 +610,7 @@ async function main(): Promise<void> {
   const { pluginTools } = await import("@omniroute/open-sse/mcp-server/tools/pluginTools.ts");
   const { notionTools } = await import("@omniroute/open-sse/mcp-server/tools/notionTools.ts");
   const { obsidianTools } = await import("@omniroute/open-sse/mcp-server/tools/obsidianTools.ts");
+  const { iosBridgeTools } = await import("@omniroute/open-sse/mcp-server/tools/iosBridgeTools.ts");
 
   // Build the full live set of registered tools (deduped by RESERVED_MCP_NAMES logic:
   // agentSkillTools + compressionTools are already in MCP_TOOLS).
@@ -606,6 +622,7 @@ async function main(): Promise<void> {
     ...(pluginTools as unknown as McpToolLike[]),
     ...(notionTools as unknown as McpToolLike[]),
     ...(obsidianTools as unknown as McpToolLike[]),
+    ...(iosBridgeTools as unknown as McpToolLike[]),
   ];
   const liveMcpToolNames = new Set(liveMcpTools.map((t) => t.name));
 
