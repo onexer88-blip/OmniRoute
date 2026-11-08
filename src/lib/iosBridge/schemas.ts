@@ -126,7 +126,14 @@ function listOrWrapped<T extends z.ZodType, K extends string>(item: T, key: K, m
   // Wrap a bare array before validation so issue paths stay precise
   // ("calendar.events.0.start"), which a union would collapse to "calendar".
   return z.preprocess(
-    (v) => (Array.isArray(v) ? { [key]: v } : v),
+    (v) => {
+      if (v === null) return undefined;
+      // Shortcuts sends "" for empty Repeat Results and a bare object for a single one.
+      if (typeof v === "string" && v.trim() === "") return { [key]: [] };
+      if (Array.isArray(v)) return { [key]: v };
+      if (v && typeof v === "object" && !(key in v)) return { [key]: [v] };
+      return v;
+    },
     z.object({ [key]: list } as Record<K, typeof list>).optional()
   );
 }

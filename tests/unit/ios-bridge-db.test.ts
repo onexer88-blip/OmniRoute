@@ -189,3 +189,18 @@ test("claimIosActions: returns + marks only the requested types as done", () => 
   assert.equal(iosDb.getIosAction(del.id)?.status, "pending");
   assert.equal(iosDb.claimIosActions(["reminders.create"]).length, 0, "claimed only once");
 });
+
+test("schema: empty Repeat Results clear a list, a single item becomes a list", () => {
+  const parsed = iosBridgeSyncSchema.parse({
+    calendar: "",
+    reminders: { title: "Nur eine", list: "Privat" },
+  });
+  assert.deepEqual(parsed.calendar, { events: [] });
+  assert.equal(parsed.reminders?.items.length, 1);
+  assert.equal(parsed.reminders?.items[0].title, "Nur eine");
+  assert.equal(
+    iosBridgeSyncSchema.safeParse({ calendar: null }).success,
+    false,
+    "null alone is empty"
+  );
+});
