@@ -203,3 +203,28 @@ test("link builders produce Apple Maps directions and mailto/sms drafts", () => 
     "sms:+49123&body=Bin%20gleich%20da"
   );
 });
+
+test("toIosActionView lifts nested fields and trims date milliseconds", async () => {
+  const { toIosActionView } = await import("../../src/lib/iosBridge/actionView.ts");
+  const ev = await call("ios_calendar_create_event", {
+    title: "Arzt",
+    start: "2026-11-08T14:00:00+01:00",
+    calendar: "Privat",
+  });
+  const view = toIosActionView(ev.action);
+  assert.equal(view.title, "Arzt");
+  assert.equal(view.start, "2026-11-08T13:00:00Z");
+  assert.equal(view.end, "2026-11-08T14:00:00Z");
+  assert.equal(view.calendar, "Privat");
+  assert.equal(view.due, "");
+
+  const upd = await call("ios_reminders_update", {
+    title: "Milch",
+    list: "Einkauf",
+    newTitle: "Hafermilch",
+  });
+  const uview = toIosActionView(upd.action);
+  assert.equal(uview.title, "Milch");
+  assert.equal(uview.list, "Einkauf");
+  assert.equal(uview.newTitle, "Hafermilch");
+});

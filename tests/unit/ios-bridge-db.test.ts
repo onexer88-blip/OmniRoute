@@ -150,3 +150,42 @@ test("clearIosBridgeData removes everything", () => {
   assert.equal(iosDb.getIosBridgeStatus().connected, false);
   assert.equal(iosDb.listIosActions().length, 0);
 });
+
+test("schema: accepts Apple Shortcuts quirks (bare arrays, blanks, comma decimals, Ja/Nein)", () => {
+  const parsed = iosBridgeSyncSchema.parse({
+    calendar: [{ title: "Termin", start: "2026-11-08T09:00:00+01:00", end: "", allDay: "Nein" }],
+    reminders: [{ title: "Ohne Datum", due: "", list: "", priority: "" }],
+    location: { latitude: "52,52", longitude: "13,405", accuracy: "" },
+    health: [{ metric: "steps", value: "1234", start: "2026-11-07T00:00:00+01:00", end: "" }],
+  });
+  assert.equal(parsed.calendar?.events.length, 1);
+  assert.equal(parsed.calendar?.events[0].end, undefined);
+  assert.equal(parsed.calendar?.events[0].allDay, false);
+  assert.equal(parsed.reminders?.items[0].due, undefined);
+  assert.equal(parsed.reminders?.items[0].completed, false);
+  assert.equal(parsed.location?.latitude, 52.52);
+  assert.equal(parsed.location?.accuracy, undefined);
+  assert.equal(parsed.health?.samples[0].value, 1234);
+  // Still strict where it matters.
+  assert.equal(
+    iosBridgeSyncSchema.safeParse({ location: { latitude: "", longitude: 1 } }).success,
+    false
+  );
+  assert.equal(
+    iosBridgeSyncSchema.safeParse({ calendar: [{ title: "x", start: "" }] }).success,
+    false
+  );
+});
+
+test("claimIosActions: returns + marks only the requested types as done", () => {
+  const rem = iosDb.enqueueIosAction("reminders.create", { title: "A" });
+  const del = iosDb.enqueueIosAction("reminders.delete", { match: { title: "B" } });
+  const claimed = iosDb.claimIosActions(["reminders.create", "calendar.create_event"]);
+  assert.deepEqual(
+    claimed.map((a) => a.id),
+    [rem.id]
+  );
+  assert.equal(iosDb.getIosAction(rem.id)?.status, "done");
+  assert.equal(iosDb.getIosAction(del.id)?.status, "pending");
+  assert.equal(iosDb.claimIosActions(["reminders.create"]).length, 0, "claimed only once");
+});

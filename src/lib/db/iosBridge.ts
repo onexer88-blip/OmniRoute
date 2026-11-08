@@ -196,6 +196,29 @@ export function getIosAction(id: string): IosAction | null {
   return readActions().find((a) => a.id === id) ?? null;
 }
 
+/**
+ * Fetch pending actions (optionally only some types) and mark them `done` in the same
+ * transaction — for shortcuts that cannot report results back. Other types stay pending.
+ */
+export function claimIosActions(types?: readonly IosActionType[], now = new Date()): IosAction[] {
+  const nowIso = now.toISOString();
+  const claimed: IosAction[] = [];
+  const db = getDbInstance();
+  db.transaction(() => {
+    const actions = readActions();
+    for (const a of actions) {
+      if (a.status !== "pending") continue;
+      if (types && types.length > 0 && !types.includes(a.type)) continue;
+      a.status = "done";
+      a.updatedAt = nowIso;
+      a.result = "delivered";
+      claimed.push({ ...a });
+    }
+    if (claimed.length > 0) writeValue("actions", pruneActions(actions, now.getTime()));
+  })();
+  return claimed;
+}
+
 /** Record what the iPhone did with each action. Unknown ids are reported, not stored. */
 export function applyIosActionResults(
   input: IosActionResults,

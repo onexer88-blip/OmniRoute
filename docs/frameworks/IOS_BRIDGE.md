@@ -100,6 +100,12 @@ or epoch seconds/milliseconds.
 Limits: 2,000 events, 2,000 reminders, 5,000 health samples per sync. Health metric names are
 normalized to `snake_case` (`"Heart Rate"` → `heart_rate`).
 
+**Shortcuts-friendly input** (`src/lib/iosBridge/schemas.ts`): `calendar`, `reminders` and
+`health` may also be bare arrays (`"calendar": [ … ]`); empty strings count as "not set";
+numbers may be strings with a decimal comma (`"52,52"`); booleans may be `"Ja"`/`"Nein"`,
+`"1"`/`"0"` or `"true"`/`"false"`. Validation errors name the exact field
+(`calendar.events.0.start`).
+
 ```bash
 curl -X POST https://<your-omniroute>/api/v1/ios-bridge/sync \
   -H "Authorization: Bearer $OMNIROUTE_API_KEY" \
@@ -118,6 +124,15 @@ curl -X POST https://<your-omniroute>/api/v1/ios-bridge/sync \
 | `reminders.delete`      | `match: { title, list?, id? }`                                                                 |
 
 Finished actions are kept for 7 days; the queue holds at most 500 actions.
+
+`GET /api/v1/ios-bridge/actions` returns every action with flat fields for Shortcuts — `title`,
+`newTitle`, `list`, `calendar`, `start`, `end`, `due`, `location`, `notes`, `priority` (empty
+string when unset; dates without milliseconds) — next to the original `payload`
+(`src/lib/iosBridge/actionView.ts`). Query parameters:
+
+- `type=reminders.create,calendar.create_event` — only these action types.
+- `ack=true` — mark the returned actions `done` immediately, for shortcuts that do not POST
+  results back. Actions of other types stay pending.
 
 ## iPhone setup (Apple Shortcuts)
 
@@ -139,13 +154,14 @@ Finished actions are kept for 7 days; the queue holds at most 500 actions.
    - _Get Contents of URL_: `POST …/api/v1/ios-bridge/sync`, header
      `Authorization: Bearer <key>`, request body **File** = the dictionary (sent as JSON).
 4. **Run queued actions** (same shortcut, after the sync):
-   - _Get Contents of URL_: `GET …/api/v1/ios-bridge/actions` → _Get Dictionary Value_
-     `actions` → _Repeat with Each_ → _If_ `type` is …
-     - `calendar.create_event` → _Get Dates from Input_ on `start` / `end` → _Add New Event_.
-     - `reminders.create` → _Add New Reminder_.
-     - `reminders.complete` / `update` / `delete` → _Find Reminders_ where Title is
-       `match.title` (and List is `match.list`) → edit or _Remove Reminders_.
-   - Collect `{ "id": <action id>, "status": "done" }` per action and send them with
+   - Simple variant: _Get Contents of URL_:
+     `GET …/api/v1/ios-bridge/actions?type=reminders.create,calendar.create_event&ack=true` →
+     _Get Dictionary Value_ `actions` → _Repeat with Each_ → _If_ `type` is …
+     - `calendar.create_event` → _Add New Event_ with `title`, `start`, `end`, `location`.
+     - `reminders.create` → _Add New Reminder_ with `title` (and `due` as alert).
+   - Full variant: leave out `ack=true`, also handle `reminders.complete` / `update` /
+     `delete` (_Find Reminders_ where Title is `title`), and report
+     `{ "id": <action id>, "status": "done" }` per action with
      _Get Contents of URL_: `POST …/api/v1/ios-bridge/actions`, body `{ "results": [...] }`.
 5. **Automate it:** Shortcuts → Automation → _Time of Day_ (several times a day, _Run
    Immediately_). Add an automation such as _When App is closed_ for faster round trips, or put

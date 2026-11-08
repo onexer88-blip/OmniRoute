@@ -128,3 +128,46 @@ test("DELETE /sync wipes snapshots and actions", async () => {
   assert.equal(status.connected, false);
   assert.equal(status.actions.pending, 0);
 });
+
+test("GET /actions?type=…&ack=true returns flat fields and marks them delivered", async () => {
+  const rem = iosDb.enqueueIosAction("reminders.create", { title: "Brot", list: "Einkauf" });
+  const other = iosDb.enqueueIosAction("reminders.delete", { match: { title: "Alt" } });
+
+  const bad = await actionsRoute.GET(req("actions?type=nope", { key: apiKey }));
+  assert.equal(bad.status, 400);
+
+  const res = await actionsRoute.GET(
+    req("actions?type=reminders.create,calendar.create_event&ack=true", { key: apiKey })
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.deepEqual(
+    body.actions.map((a: { id: string }) => a.id),
+    [rem.id]
+  );
+  assert.equal(body.actions[0].title, "Brot");
+  assert.equal(body.actions[0].list, "Einkauf");
+  assert.equal(iosDb.getIosAction(rem.id)?.status, "done");
+  assert.equal(iosDb.getIosAction(other.id)?.status, "pending");
+
+  const again = await (
+    await actionsRoute.GET(req("actions?type=reminders.create&ack=true", { key: apiKey }))
+  ).json();
+  assert.equal(again.count, 0);
+});
+
+test("POST /sync accepts a Shortcuts-style body (bare arrays, comma decimals, blanks)", async () => {
+  const res = await syncRoute.POST(
+    req("sync", {
+      method: "POST",
+      key: apiKey,
+      body: {
+        device: "iPhone",
+        location: { latitude: "48,137", longitude: "11,575" },
+        reminders: [{ title: "Milch", due: "", list: "Einkauf" }],
+      },
+    })
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual((await res.json()).updated, ["reminders", "location"]);
+});

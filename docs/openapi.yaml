@@ -494,11 +494,26 @@ paths:
       description: |
         Actions queued by the ios_* MCP write tools (`calendar.create_event`, `reminders.create`,
         `reminders.update`, `reminders.complete`, `reminders.delete`) for the shortcut to execute.
+        Each action carries flat fields for Shortcuts (`title`, `newTitle`, `list`, `calendar`,
+        `start`, `end`, `due`, `location`, `notes`, `priority`) next to the raw `payload`.
       security:
         - BearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: false
+          description: Comma-separated action types to return
+          schema: { type: string, example: "reminders.create,calendar.create_event" }
+        - name: ack
+          in: query
+          required: false
+          description: "`true` marks the returned actions as done immediately"
+          schema: { type: string, enum: ["true", "false", "1", "0"] }
       responses:
         "200":
-          description: "`{ count, actions: [{ id, type, payload, status, createdAt, updatedAt }] }`"
+          description: "`{ count, actions: [{ id, type, status, createdAt, title, list, start, end, due, …, payload }] }`"
+        "400":
+          description: Unknown action type or invalid ack value
         "401":
           description: Missing or invalid API key
     post:
